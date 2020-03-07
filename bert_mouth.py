@@ -13,12 +13,12 @@ from torch.nn.modules.loss import CrossEntropyLoss
 import numpy as np
 from tqdm import tqdm, trange
 from transformers.tokenization_bert import BertTokenizer
-from transformers.optimization import AdamW, WarmupLinearSchedule
+from transformers.optimization import AdamW, get_linear_schedule_with_warmup
 from transformers import CONFIG_NAME, WEIGHTS_NAME
 from torch import optim
 from torch.utils.tensorboard import SummaryWriter
 
-from model import BertMouth
+from LMmodel import BertMouth
 from data import make_dataloader
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
@@ -126,21 +126,21 @@ def train(args, tokenizer, device):
     optimization_steps = len(train_dataloader) * args.num_train_epochs
     optimizer = AdamW(optimizer_grouped_parameters,
                       lr=args.learning_rate, eps=args.adam_epsilon)
-    scheduler = WarmupLinearSchedule(optimizer,
-                                     warmup_steps=0,
-                                     t_total=optimization_steps)
+    scheduler = get_linear_schedule_with_warmup(optimizer,
+                                     num_warmup_steps=0,
+                                     num_training_steps=optimization_steps)
     loss_fct = CrossEntropyLoss(ignore_index=0)
-
     def calc_batch_loss(batch):
         batch = tuple(t.to(device) for t in batch)
         input_ids, y, input_mask, input_type_id, masked_pos = batch
-
-        logits = model(input_ids, input_type_id, input_mask)
-        logits = logits.view(-1, tokenizer.vocab_size)
+        next_sentence_label = torch.tensor([1,1,1,1,1,1,1,1,1,1]).to(device)
+        masked_lm_labels = input_ids.clone()
+        masked_lm_labels[masked_lm_labels == 4] = -100
+        outputs = model(input_ids=input_ids, token_type_ids=input_type_id, attention_mask=input_mask, masked_lm_labels=masked_lm_labels, next_sentence_label=next_sentence_label)
+        logits = outputs[0].view(-1, tokenizer.vocab_size)
         y = y.view(-1)
-        loss = loss_fct(logits, y)
+        loss = loss_fct(logits, y) + outputs[1].item() + outputs[2].item()
         return loss
-
     logger.info("train starts")
     model.train()
     summary_writer = SummaryWriter(log_dir="logs")
@@ -253,7 +253,7 @@ def generate(tokenizer, device, max_iter=10, length=50, max_length=128,
 
                 generated_token_ids[0, j + 1] = tokenizer.vocab["[MASK]"]
                 logits = model(generated_token_ids,
-                               input_type_id, input_mask)[0]
+                               input_type_id, input_mask)[0][0]
                 sampled_token_id = torch.argmax(logits[j + 1])
                 generated_token_ids[0, j + 1] = sampled_token_id
             sampled_sequence = [tokenizer.ids_to_tokens[token_id]

@@ -71,37 +71,44 @@ def read_texts(input_file):
 
 
 def convert_examples_to_features(examples, seq_length, tokenizer, ignore_index=0):
-    def make_feature(ex_index, tokens):
-        tokens.insert(0, "[CLS]")
-        tokens.append("[SEP]")
+  def make_feature(ex_index, tokens, first_seq_len):
+    tokens.insert(0, "[CLS]")
+    tokens.append("[SEP]")
 
-        input_type_ids = [0] * len(tokens)
-        input_ids = tokenizer.convert_tokens_to_ids(tokens)
-        input_mask = [1] * len(input_ids)
+    input_type_ids = [0] * len(tokens)
+    for i in range(first_seq_len, len(input_type_ids)):
+      input_type_ids[i] = 1
+      
+    input_ids = tokenizer.convert_tokens_to_ids(tokens)
+    input_mask = [1] * len(input_ids)
 
-        while len(input_ids) < seq_length:
-            input_ids.append(0)
-            input_mask.append(0)
-            input_type_ids.append(0)
+    while len(input_ids) < seq_length:
+      input_ids.append(0)
+      input_mask.append(0)
+      input_type_ids.append(0)
 
-        assert len(input_ids) == seq_length
-        assert len(input_mask) == seq_length
-        assert len(input_type_ids) == seq_length
+    assert len(input_ids) == seq_length
+    assert len(input_mask) == seq_length
+    assert len(input_type_ids) == seq_length
 
-        return InputFeatures(unique_id=ex_index,
-                             tokens=tokens,
-                             input_ids=input_ids,
-                             input_type_ids=input_type_ids,
-                             input_mask=input_mask)
+    return InputFeatures(unique_id=ex_index,
+                          tokens=tokens,
+                          input_ids=input_ids,
+                          input_type_ids=input_type_ids,
+                          input_mask=input_mask)
 
-    features = []
-    for example in examples:
-        subwords = tokenizer.tokenize(example.text)
-        if len(subwords) > seq_length - 2:
-            continue
-        features.append(make_feature(example.unique_id, subwords))
-
-    return features
+  features = []
+  for i in range(len(examples)-1):
+    example = examples[i]
+    subwords = tokenizer.tokenize(example.text)
+    subwords.append("[SEP]")
+    first_seq_len = len(subwords)
+    subwords.extend(tokenizer.tokenize(examples[i+1].text))
+    if len(subwords) > seq_length - 2:
+      continue
+    type_id = 0 if i == 0 else 1
+    features.append(make_feature(example.unique_id, subwords, first_seq_len))
+  return features
 
 
 def make_dataloader(file_path, max_seq_length, batch_size, tokenizer, eval_mode=False):
