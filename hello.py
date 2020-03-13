@@ -353,6 +353,6 @@ if __name__ == "__main__":
     
 
     if (not "models" in locals()) or (not "models" in globals()):
-    models = load_models(args.bert_model)
+      models = load_models(args.bert_model)
 
     print(hello(input_dict, models, modes)[0])
