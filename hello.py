@@ -20,6 +20,8 @@ from torch import optim
 from torch.utils.tensorboard import SummaryWriter
 
 from data import make_dataloader
+from LMmodel import BertMouth
+
 
 def parse_argument():
     parser = argparse.ArgumentParser()
