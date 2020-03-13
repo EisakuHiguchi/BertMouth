@@ -133,14 +133,19 @@ def train(args, tokenizer, device):
     def calc_batch_loss(batch):
         batch = tuple(t.to(device) for t in batch)
         input_ids, y, input_mask, input_type_id, masked_pos = batch
-        next_sentence_label = torch.tensor([1,1,1,1,1,1,1,1,1,1]).to(device)
+        next_sentence_label = torch.tensor([1 for _ in range(len(input_ids))]).to(device)
+        
         masked_lm_labels = input_ids.clone()
         masked_lm_labels[masked_lm_labels == 4] = -100
+        
         outputs = model(input_ids=input_ids, token_type_ids=input_type_id, attention_mask=input_mask, masked_lm_labels=masked_lm_labels, next_sentence_label=next_sentence_label)
+        
         logits = outputs[0].view(-1, tokenizer.vocab_size)
         y = y.view(-1)
         loss = loss_fct(logits, y) + outputs[1].item() + outputs[2].item()
+        
         return loss
+    
     logger.info("train starts")
     model.train()
     summary_writer = SummaryWriter(log_dir="logs")
