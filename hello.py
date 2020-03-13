@@ -148,7 +148,7 @@ def generate_core(j,input_dict, quiet=False):
   input_type_id = input_dict['input_type_id']
   input_mask = input_dict['input_mask']
 
-    if fix_word_interval:
+  if fix_word_interval:
     if j + 1 in fix_word_interval:
       return input_dict
   
