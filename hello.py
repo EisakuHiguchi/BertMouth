@@ -220,9 +220,9 @@ def init_save(LOG_DIR):
     shutil.copy(os.path.join(LOG_DIR,savefile), savefile)
   elif not os.path.exists(savefile):
     os.makedirs(LOG_DIR)
-    with open(savefile, 'w', encoding='utf-8') as f:
-      f.write(savefile)
-      f.write('\n----\n')
+  with open(savefile, 'w', encoding='utf-8') as f:
+    f.write(savefile)
+    f.write('\n----\n')
 
   return os.path.abspath(savefile)
 
